@@ -1,34 +1,41 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import "./App.css";
 import Autocomplete from "./components/autocomplete";
 import SuggestionList from "./components/suggestion-list";
-import debounce from "lodash.debounce";
+import { addSearchWordsToTrie } from "./restApi";
 
 function App() {
   const [inputVal, setInputVal] = useState("");
 
-  const handleDebounceInputVal = useMemo(
-    () => debounce((input) => setInputVal(input), 300),
-    []
-  );
-
   const handleChange = (e) => {
-    handleDebounceInputVal(e.target.value);
-    // setInputVal(e.target.value)
+    setInputVal(e.target.value);
+  };
+  //insert word to trie code
+  const addSearchKeywordToTrie = () => {
+    addSearchWordsToTrie(inputVal)
+      .then((res) => {
+        console.log(res);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   };
 
-  const handleSelectSuggestion = (data) => {
-    setInputVal(data);
-  };
+  const handleSearch = () =>{
+    addSearchKeywordToTrie();
+  }
+
 
   return (
     <>
       <Autocomplete inputVal={inputVal} handleChange={handleChange} />
+      <button onClick={handleSearch}>Search</button>
       {inputVal.length > 0 && (
         <SuggestionList
           inputVal={inputVal}
-          handleSelectSuggestion={handleSelectSuggestion}
+          handleSelectSuggestion={handleChange}
         ></SuggestionList>
+
       )}
     </>
   );

@@ -1,13 +1,41 @@
-const SuggestionList = ({ inputVal , handleSelectSuggestion }) => {
-  const suggList = ["cat is good", "cat is bad", "catastrophy"];
-  const newList = suggList.filter((data) => data.includes(inputVal));
+import { useEffect, useMemo, useState } from "react";
+import { searchWordInTrie, startsWithInTrie } from "../restApi";
+import debounce from "lodash.debounce";
 
- 
+const SuggestionList = ({ inputVal, handleSelectSuggestion }) => {
+
+const [suggList  , setSuggList] = useState([]);
+  const suggestionListApiDebounce = useMemo(() => {
+    // return debounce((val) => 
+    //   searchWordInTrie(val)
+    //     .then((res) => {
+    //       console.log(res);
+    //     })
+    //     .catch((err) => {
+    //       console.log(err);
+    //     })
+    // , 500);
+    return debounce((val)=>{
+        startsWithInTrie(val).then((res)=>{
+            console.log("suggestions==>",res.data.response);
+            setSuggList(res.data.response)
+
+        }).catch((e)=>{
+            console.log(e)
+        })
+    },500)
+  }, []);
+
+  useEffect(() => {
+    suggestionListApiDebounce(inputVal);
+    
+  }, [inputVal]);
+
   return (
     <>
-      {newList.map((data) => (
+      {suggList.map((data) => (
         <li
-          style={{ listStyle: "none" , cursor: "pointer" }}
+          style={{ listStyle: "none", cursor: "pointer" }}
           onMouseEnter={(e) => {
             e.target.style.background = "#f0f0f0";
           }}
