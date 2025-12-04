@@ -25,7 +25,7 @@ class Trie:
             if c not in curr.children:
                 return False
             curr = curr.children[c]
-        return True
+        return curr.is_end
     
     def starts_with(self , prefix: str):
         cur = self.root

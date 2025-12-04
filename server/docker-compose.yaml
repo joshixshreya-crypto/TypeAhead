@@ -1,0 +1,68 @@
+
+services: 
+  redis: 
+    image: redis:7-alpine
+    container_name: chat-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck: 
+      test: ["CMD" , "redis-cli" , "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  chat_db:
+    image: postgres:15
+    container_name: chat-postgres
+    env_file:
+      - .env
+    ports: 
+      - "5432:5432"
+    volumes: 
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test:  ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  
+  pgadmin: 
+    image: dpage/pgadmin4
+    container_name: chat-pgadmin
+    env_file: 
+      - .env
+    ports:
+      - "5050:80"
+    depends_on:
+      - chat_db
+    restart: unless-stopped
+  
+  app: 
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat-server
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      chat_db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+
+
+

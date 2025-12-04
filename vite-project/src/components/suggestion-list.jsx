@@ -1,34 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { searchWordInTrie, startsWithInTrie } from "../restApi";
+import { startsWithInTrie } from "../restApi";
 import debounce from "lodash.debounce";
 
 const SuggestionList = ({ inputVal, handleSelectSuggestion }) => {
-
-const [suggList  , setSuggList] = useState([]);
+  const [suggList, setSuggList] = useState([]);
   const suggestionListApiDebounce = useMemo(() => {
-    // return debounce((val) => 
-    //   searchWordInTrie(val)
-    //     .then((res) => {
-    //       console.log(res);
-    //     })
-    //     .catch((err) => {
-    //       console.log(err);
-    //     })
-    // , 500);
-    return debounce((val)=>{
-        startsWithInTrie(val).then((res)=>{
-            console.log("suggestions==>",res.data.response);
-            setSuggList(res.data.response)
-
-        }).catch((e)=>{
-            console.log(e)
+    return debounce((val) => {
+      startsWithInTrie(val)
+        .then((res) => {
+          setSuggList(res.data.response);
         })
-    },500)
+        .catch((e) => {
+          console.log(e);
+        });
+    }, 500);
   }, []);
 
   useEffect(() => {
     suggestionListApiDebounce(inputVal);
-    
   }, [inputVal]);
 
   return (
