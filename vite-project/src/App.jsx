@@ -1,43 +1,19 @@
-import { useState } from "react";
+import { Route, Routes } from "react-router-dom";
+import CreateRoom from "./components/create-room";
+import ChatComponent from "./components/chat-component";
 import "./App.css";
-import Autocomplete from "./components/autocomplete";
-import SuggestionList from "./components/suggestion-list";
-import { addSearchWordsToTrie } from "./restApi";
+import Register from "./components/register";
 
 function App() {
-  const [inputVal, setInputVal] = useState("");
-
-  const handleChange = (e) => {
-    setInputVal(e.target.value);
-  };
-  //insert word to trie code
-  const addSearchKeywordToTrie = () => {
-    addSearchWordsToTrie(inputVal)
-      .then((res) => {
-        console.log(res);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-  };
-
-  const handleSearch = () =>{
-    addSearchKeywordToTrie();
-  }
-
-
   return (
-    <>
-      <Autocomplete inputVal={inputVal} handleChange={handleChange} />
-      <button onClick={handleSearch}>Search</button>
-      {inputVal.length > 0 && (
-        <SuggestionList
-          inputVal={inputVal}
-          handleSelectSuggestion={handleChange}
-        ></SuggestionList>
-
-      )}
-    </>
+    <Routes>
+      <Route path="/" element={<Register></Register>}></Route>
+      <Route path="/create-room/:userId" element={<CreateRoom></CreateRoom>}></Route>
+      <Route
+        path="/chat/:roomId"
+        element={<ChatComponent></ChatComponent>}
+      ></Route>
+    </Routes>
   );
 }
 

@@ -18,3 +18,13 @@ export const searchWordInTrie = (searchPayload) =>{
 export const startsWithInTrie = (prefix) =>{
     return apiClient.get(`/starts-with/${prefix}`)
 }
+
+//chat apis
+export const fetchMessageByRoomName = (room_name) =>{
+    return apiClient.get(`/fetch-chats/${room_name}`)
+}
+
+//add user
+export const addUser = (userPayload) =>{
+    return apiClient.post('/user-creds' , userPayload)
+}
