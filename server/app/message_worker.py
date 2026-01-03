@@ -1,50 +1,75 @@
 import os
+import uuid
+from dotenv import load_dotenv
 from redis_client import redis_client
 from database import SessionLocal
-from models.chat_model import roomSchema
+from models.chat_model import roomSchema, messageSchema
 
-
+load_dotenv()
 
 async def message_worker():
-    GROUP = os.getenv("STREAM_NAME")
+    GROUP = os.getenv("GROUP_NAME")
     CONSUMER = os.getenv("CONSUMER_NAME")
     STREAM = os.getenv("STREAM_NAME")
     db = SessionLocal()
     try:
         while True:
-            # message = await queue.get()
-            message = redis_client.xreadgroup(
+            # Read messages from Redis stream
+            messages = redis_client.xreadgroup(
                 groupname=GROUP,
-                consumername= CONSUMER,
-                streams= {STREAM: '>' },
-                count= 1,
-                block= 5000
-
+                consumername=CONSUMER,
+                streams={STREAM: '>'},
+                count=1,
+                block=5000
             )
-            print("MESSAGES++++++========>" , message)
-            sender_id  = message['sender_id']
-            msg = message['message']
-            room_name = message['room_name']
-
-            # get id via room name
-            room  = db.query( roomSchema).filter(roomSchema.room_name == room_name).first()
-
-            room_id = room.id
-
-            # adding message data to db from queue
-            # new_record = messageSchema(
-            #     id=str(uuid.uuid4()),
-            #     room_id =  room_id,
-            #     message = msg,   
-            #     sender_id = sender_id
-            # )
-            # db.add(new_record)
-            # db.commit()
-            # redis_client.xack(
-            #     name=STREAM,
-            #     groupname=GROUP,
+            
+            # Check if we got any messages
+            if not messages:
+                continue
                 
-                
-            # )
+            # Parse the Redis stream response
+            # Format: [[stream_name, [(message_id, {field: value, ...})]]]
+            for stream_name, message_list in messages:
+                for message_id, message_data in message_list:
+                    print(f"📨 Processing message {message_id}: {message_data}")
+                    
+                    sender_id = message_data.get('sender_id')
+                    msg = message_data.get('message')
+                    room_name = message_data.get('room_name')
+                    
+                    if not sender_id or not msg or not room_name:
+                        print(f"⚠️  Invalid message data: {message_data}")
+                        # Acknowledge the message even if invalid
+                        redis_client.xack(STREAM, GROUP, message_id)
+                        continue
+
+                    # Get room id via room name
+                    room = db.query(roomSchema).filter(roomSchema.room_name == room_name).first()
+                    
+                    if not room:
+                        print(f"⚠️  Room '{room_name}' not found")
+                        redis_client.xack(STREAM, GROUP, message_id)
+                        continue
+                    
+                    room_id = room.id
+
+                    # Adding message data to db from queue
+                    new_record = messageSchema(
+                        id=str(uuid.uuid4()),
+                        room_id=room_id,
+                        message=msg,   
+                        sender_id=sender_id
+                    )
+                    db.add(new_record)
+                    db.commit()
+                    
+                    # Acknowledge message processing
+                    redis_client.xack(STREAM, GROUP, message_id)
+                    print(f"✅ Message saved to DB and acknowledged: {message_id}")
+                    
+    except Exception as e:
+        print(f"❌ Error in message_worker: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
