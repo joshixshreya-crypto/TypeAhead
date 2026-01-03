@@ -9,8 +9,8 @@ const ConversationComponent = () => {
   const [input, setInput] = useState("");
   const { messages, setMessages, sendMessage } = useSocketConnection();
 
-  const { roomId, user_id } = useParams();
-
+  const { roomId } = useParams();
+  const userId = sessionStorage.getItem("user_id")
   const formatTime = (isoTime) => {
     if (!isoTime) return "";
     return new Date(isoTime).toLocaleTimeString("en-IN", {
@@ -21,7 +21,9 @@ const ConversationComponent = () => {
 
   const handleSendMessage = () => {
     if (input.length > 0) {
-      sendMessage(input, roomId, user_id);
+      
+      sendMessage(input, roomId, userId);
+      setInput("");
       console.log("=====>messages", messages);
     } else {
       console.log("enter a message first");
@@ -83,7 +85,7 @@ const ConversationComponent = () => {
                   padding: "3px",
                   alignItems: "flex-start",
                   wordBreak: "break-word",
-                  opacity: '0.5'
+                  opacity: "0.5",
                 }}
               >
                 <span
@@ -96,9 +98,10 @@ const ConversationComponent = () => {
                 >
                   {data.username}
                 </span>
-                <p style={{ textAlign: "left", padding: "15px", color: 'black' }}>
+                <p
+                  style={{ textAlign: "left", padding: "15px", color: "black" }}
+                >
                   {data.message}
-
                 </p>
                 <span style={{ alignSelf: "flex-end", padding: "0px 8px" }}>
                   {formatTime(data.create_time)}
@@ -117,7 +120,8 @@ const ConversationComponent = () => {
       >
         <Stack direction={"row"}>
           <TextField
-            height = '4rem'
+            value={input}
+            height="4rem"
             fullWidth
             placeholder="write a message..."
             onChange={(e) => setInput(e.target.value)}

@@ -11,7 +11,9 @@ const useSocketConnection = () => {
     };
 
     chatSocket.current.onmessage = (event) => {
-      setMessages((prev) => [...prev, event.data]);
+      
+      const parsedData = JSON.parse(event.data)
+      setMessages((prev) => [...prev, parsedData]);
     };
 
     chatSocket.current.onerror = (error) => {
@@ -27,7 +29,7 @@ const useSocketConnection = () => {
       const payload = {
         room_name: roomId,
         message: text,
-        userId: 'ace899c6-31a8-49d8-b615-0f7dd3f53737'
+        userId: userId
       };
       console.log("payload", payload);
       chatSocket.current.send(JSON.stringify(payload));

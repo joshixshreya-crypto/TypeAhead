@@ -2,11 +2,12 @@ import { useState } from "react";
 import Autocomplete from "./autocomplete";
 import SuggestionList from "./suggestion-list";
 import { addSearchWordsToTrie } from "../restApi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const CreateRoom = () => {
   const [inputVal, setInputVal] = useState("");
   const navigate = useNavigate();
+  const {user_id}  = useParams()
 
   const handleChange = (e) => {
     console.log("selected", e);
@@ -25,6 +26,7 @@ const CreateRoom = () => {
 
   const handleSearch = () => {
     addSearchKeywordToTrie();
+    console.log("user iddd====>",user_id)
     navigate(`/chat/${inputVal}`)
   };
   return (

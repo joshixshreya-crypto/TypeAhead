@@ -1,10 +1,14 @@
+import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime
 import json
+import os
 import uuid
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from async_queue import AsyncQueue
 from trie import Trie
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +16,10 @@ from database import Base , engine ,get_db ,SessionLocal
 from models.typeahead_model import searchWord
 from models.chat_model import roomSchema , messageSchema
 from models.user_model import UserModel
-
+from redis_stream import create_consumer_group , redis_client
+from start_worker import start_worker
 trie = Trie()
+queue = AsyncQueue()
 
 @asynccontextmanager
 async def load_trie_from_db(app: FastAPI ):
@@ -26,11 +32,14 @@ async def load_trie_from_db(app: FastAPI ):
         
     finally:
         db.close()
+    print("stream name printedddddddddddd========>",os.getenv('STREAM_NAME'))
+    # await start_worker()
     yield
 
 app = FastAPI(lifespan= load_trie_from_db)
 
 Base.metadata.create_all(bind=engine)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +48,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+STREAM = os.getenv('STREAM_NAME')
+GROUP = os.getenv('GROUP_NAME')
+CONSUMER = os.getenv('CONSUMER_NAME')
 
 class SearchPayload(BaseModel):
     word: str
@@ -122,30 +135,39 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             if(data):
                 json_data = json.loads(data)
-                room_name = json_data['room_name']
                 message = json_data['message']
                 sender_id  = json_data['userId']
-                await websocket.send_text(message)
-                # get id via room name
-                room  = db.query( roomSchema).filter(roomSchema.room_name == room_name).first()
-                if(not room):
-                    raise HTTPException(401 , "room not found")
-                room_id = room.id
-                new_record = messageSchema(
-                    id=str(uuid.uuid4()),
-                    room_id =  room_id,
-                    message = message,   
-                    sender_id = sender_id
-                )
-                db.add(new_record)
-                db.commit()
+                room_name = json_data['room_name']
+                user = db.query(UserModel).filter(UserModel.id == sender_id).first()
+                # payload for sending data back from server to client 
+                send_payload = {
+                    "message": message,
+                    "create_time": datetime.utcnow().isoformat()
+                }
+                if(user):
+                    send_payload["username"] = user.username
+                else:
+                    send_payload["username"] = "unknown"
+                json_payload_to_send = json.dumps(send_payload)
+                
+                await websocket.send_text(json_payload_to_send)
+
+                # adding message to queue
+                queue_payload = {
+                    "message": message,
+                    "create_time": datetime.utcnow().isoformat(),
+                    "sender_id": sender_id,    
+                    "room_name": room_name
+                }
+                redis_client.xadd(
+                    STREAM,
+                    {
+                        queue_payload
+                })
+                # await queue.put(queue_payload)
+
     except WebSocketDisconnect:
             print("Client disconnected")
     finally:
         db.close()
-
-
-   
-
-
 

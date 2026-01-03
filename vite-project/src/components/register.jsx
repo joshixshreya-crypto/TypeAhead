@@ -24,8 +24,9 @@ const Register = () => {
     addUser(userData)
       .then((res) => {
         const user_id = res.data.response.user_id
+        sessionStorage.setItem("user_id", user_id)
         // setSearchParams({userId: user_id})    
-        navigate(`/create-room/${user_id}`)   
+        navigate(`/create-room/${user_id}`)  
         console.log("====>", res);
       })
       .catch((err) => {
