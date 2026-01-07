@@ -8,45 +8,44 @@ from redis_client import redis_client
 load_dotenv()
 
 async def start_worker():
-    print("🚀 Starting worker initialization...")
+    print("Starting worker initialization...")
     
     # Wait for Redis to be ready
     max_retries = 5
     for i in range(max_retries):
         try:
             redis_client.ping()
-            print(f"✅ Redis is ready!")
+            print(f"Redis is ready!")
             break
         except Exception as e:
-            print(f"⏳ Waiting for Redis... (attempt {i+1}/{max_retries})")
+            print(f"Waiting for Redis... (attempt {i+1}/{max_retries})")
             await asyncio.sleep(2)
     else:
-        print("❌ Redis not available after retries")
+        print("Redis not available after retries")
         return
     
     # Create consumer group
     try:
         create_consumer_group()
     except Exception as e:
-        print(f"❌ Failed to create consumer group: {e}")
+        print(f"Failed to create consumer group: {e}")
         import traceback
         traceback.print_exc()
         return
     
     print("🔄 Starting message worker as background task...")
     # Run worker as background task without awaiting
-    asyncio.create_task(run_worker_with_error_handling())
+    # asyncio.create_task(run_worker_with_error_handling())
+
     
     print("✅ Worker startup initiated")
 
-async def run_worker_with_error_handling():
-    """Wrapper to handle worker errors without crashing the app"""
-    try:
-        await message_worker()
-    except Exception as e:
-        print(f"❌ Message worker failed: {e}")
-        import traceback
-        traceback.print_exc()
-
-if __name__ == "__main__":
-    asyncio.run(start_worker())
+# async def run_worker_with_error_handling():
+#     """Wrapper to handle worker errors without crashing the app"""
+#     try:
+#         await message_worker()
+#         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++message worker started")
+#     except Exception as e:
+#         print(f"❌ Message worker failed: {e}")
+#         import traceback
+#         traceback.print_exc()

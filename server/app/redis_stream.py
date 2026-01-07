@@ -8,12 +8,11 @@ load_dotenv()
 
 name = os.getenv("STREAM_NAME")
 group_name = os.getenv("GROUP_NAME")
-print("stream name" , name)
-print("group name" , group_name)
 
 def create_consumer_group():
-    name = os.getenv("STREAM_NAME")
-    group_name = os.getenv("GROUP_NAME")
+    print("consumer grouppppp" , name  , group_name)
+    # name = os.getenv("STREAM_NAME")
+    # group_name = os.getenv("GROUP_NAME")
 
     print("Creating consumer group - stream name:", name)
     print("Creating consumer group - group name:", group_name)
@@ -26,10 +25,10 @@ def create_consumer_group():
           id = "0",
           mkstream=True
         )
-        print(f"✅ Successfully created consumer group '{group_name}' for stream '{name}'")
+        print(f"Successfully created consumer group '{group_name}' for stream '{name}'")
     except redis.ResponseError as e:
         if "BUSYGROUP" in str(e):
-            print(f"ℹ️  Consumer group '{group_name}' already exists for stream '{name}'")
+            print(f"Consumer group '{group_name}' already exists for stream '{name}'")
         else:
-            print(f"❌ Error creating consumer group: {e}")
+            print(f"Error creating consumer group: {e}")
             raise 

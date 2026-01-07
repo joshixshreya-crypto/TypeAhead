@@ -14,20 +14,20 @@ from trie import Trie
 from fastapi.middleware.cors import CORSMiddleware
 from database import Base , engine ,get_db ,SessionLocal
 from models.typeahead_model import searchWord
-from models.chat_model import roomSchema , messageSchema
+from models.chat_model import roomSchema 
 from models.user_model import UserModel
-from redis_stream import create_consumer_group , redis_client
+from redis_stream import redis_client
 from start_worker import start_worker
 
 # Load environment variables
 load_dotenv()
 
 trie = Trie()
-queue = AsyncQueue()
+# queue = AsyncQueue()
 
 @asynccontextmanager
 async def load_trie_from_db(app: FastAPI ):
-    print("🔧 Starting application initialization...")
+    print(" Starting application initialization...")
     
     # Wait for database to be ready
     max_retries = 10
@@ -37,39 +37,38 @@ async def load_trie_from_db(app: FastAPI ):
             db = SessionLocal()
             # Test database connection
             db.execute(text("SELECT 1"))
-            print(f"✅ Database is ready!")
+            print(f"Database is ready!")
             break
         except Exception as e:
-            print(f"⏳ Waiting for database... (attempt {i+1}/{max_retries}): {e}")
+            print(f" Waiting for database... (attempt {i+1}/{max_retries}): {e}")
             if db:
                 db.close()
             await asyncio.sleep(2)
     else:
-        print("❌ Database not available after retries")
+        print("Database not available after retries")
         yield
         return
     
-    print("📚 Loading trie from database...")
+    print("Loading trie from database...")
     try:
         words = db.query(roomSchema).all()
         for a in words:      
             trie.insert(a.room_name)
-        print(f"✅ Loaded {len(words)} words into trie")
+        print(f"Loaded {len(words)} words into trie")
     except Exception as e:
         print(f"⚠️  Error loading trie: {e}")
     finally:
         db.close()
     
-    print(f"📡 Stream name: {os.getenv('STREAM_NAME')}")
-    
     # Start worker in background task (non-blocking)
+    # create_consumer_group()
     asyncio.create_task(start_worker())
-    print("✅ Application startup complete - worker running in background")
+    print("Application startup complete - worker running in background")
     
     yield
     
     # Cleanup on shutdown
-    print("🔄 Application shutting down...")
+    print("Application shutting down...")
 
 app = FastAPI(lifespan= load_trie_from_db)
 
