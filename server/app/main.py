@@ -122,7 +122,6 @@ def starts_with_in_trie(payload:str):
 
 @app.post("/user-creds")
 def add_user(user: UserPayload , db: Session = Depends(get_db) ):
-    print("=======================>" , user)
     user_id = str(uuid.uuid4())
     sql_query = 'insert into users (id , email , username , password) values (:id , :email , :username , :password)'
     db.execute(text(sql_query), {
@@ -157,11 +156,11 @@ def fetch_chat_history(room_name: str , db: Session = Depends(get_db)):
     response = db.execute(text(sql_query), {
         'room_id': room_id 
     }).mappings().all()
-    print("======>response", response )
     return {"result": response , "message": "chats fetched"}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    print("WEBSOCKET CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
     await websocket.accept()
     db = SessionLocal()
     try:

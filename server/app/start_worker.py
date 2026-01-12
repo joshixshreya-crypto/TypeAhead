@@ -35,17 +35,7 @@ async def start_worker():
     
     print("🔄 Starting message worker as background task...")
     # Run worker as background task without awaiting
-    # asyncio.create_task(run_worker_with_error_handling())
+    asyncio.create_task(message_worker())
 
     
     print("✅ Worker startup initiated")
-
-# async def run_worker_with_error_handling():
-#     """Wrapper to handle worker errors without crashing the app"""
-#     try:
-#         await message_worker()
-#         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++message worker started")
-#     except Exception as e:
-#         print(f"❌ Message worker failed: {e}")
-#         import traceback
-#         traceback.print_exc()
