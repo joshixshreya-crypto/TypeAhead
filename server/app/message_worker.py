@@ -52,7 +52,6 @@ async def message_worker():
 def send_mail_worker(msg):
     # using SendGrid's Python Library
     # https://github.com/sendgrid/sendgrid-python
-    print("mail sendgrid worker called" , msg['message'])
     message = Mail(
         from_email='shreya.xyz.wtf@gmail.com',
         to_emails='joshi1905shreya@gmail.com',
