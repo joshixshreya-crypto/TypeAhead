@@ -45,18 +45,19 @@ async def message_worker():
                 )
                 await asyncio.to_thread(
                     send_mail_worker ,
-                    message_data
+    
                 )
                 redis_client.xack(STREAM, GROUP, message_id)
 
-def send_mail_worker(msg):
+def send_mail_worker():
     # using SendGrid's Python Library
     # https://github.com/sendgrid/sendgrid-python
+
     message = Mail(
         from_email='shreya.xyz.wtf@gmail.com',
-        to_emails='joshi1905shreya@gmail.com',
+        to_emails='personal.vaibhavtripathi@gmail.com',
         subject='Sending with Twilio SendGrid is Fun',
-        html_content=f"<strong>and easy to do anywhere, even with Python</strong> ${msg['message']}")
+        html_content=f"<strong>Vaibhav is a phony . hes a gay phonyy</strong>")
     try:
         sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
         # sg.set_sendgrid_data_residency("eu")

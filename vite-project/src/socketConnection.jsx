@@ -1,3 +1,4 @@
+import { Alert } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 
 const useSocketConnection = () => {
@@ -13,6 +14,11 @@ const useSocketConnection = () => {
     chatSocket.current.onmessage = (event) => {
       
       const parsedData = JSON.parse(event.data)
+      if(parsedData.error){
+         console.warn(parsedData.error)
+         return
+      }
+      console.log("=======>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",parsedData)
       setMessages((prev) => [...prev, parsedData]);
     };
 

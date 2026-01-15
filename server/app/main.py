@@ -18,6 +18,10 @@ from models.chat_model import roomSchema
 from models.user_model import UserModel
 from redis_stream import redis_client
 from start_worker import start_worker
+from rate_limiter import rate_limiter
+from sliding_win_rate_limiter import sliding_window_rate_limiter
+from token_bucket_rate_limiter import token_bucket_rl
+
 
 # Load environment variables
 load_dotenv()
@@ -160,7 +164,6 @@ def fetch_chat_history(room_name: str , db: Session = Depends(get_db)):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    print("WEBSOCKET CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
     await websocket.accept()
     db = SessionLocal()
     try:
@@ -171,29 +174,45 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = json_data['message']
                 sender_id  = json_data['userId']
                 room_name = json_data['room_name']
-                user = db.query(UserModel).filter(UserModel.id == sender_id).first()
-                # payload for sending data back from server to client 
-                send_payload = {
-                    "message": message,
-                    "create_time": datetime.utcnow().isoformat()
-                }
-                if(user):
-                    send_payload["username"] = user.username
+                # rate limiter added so that no spam messages 
+                # if(rate_limiter(sender_id) == False):
+                #     await websocket.send_text(json.dumps({
+                #         "error": "too many messages !! slow down "
+                #     }))
+                #     continue
+                # if(sliding_window_rate_limiter(sender_id) == False):
+                #     await websocket.send_text(json.dumps({
+                #         "error": "too many messages dude slow downnn!"
+                #     }))
+                #     continue
+                if(token_bucket_rl(sender_id) == False):
+                    await websocket.send_text(json.dumps({
+                        "error": "too many messages dude slow downnn!"
+                    }))
+                    continue
                 else:
-                    send_payload["username"] = "unknown"
-                json_payload_to_send = json.dumps(send_payload)
-                
-                await websocket.send_text(json_payload_to_send)
+                    user = db.query(UserModel).filter(UserModel.id == sender_id).first()
+                    # payload for sending data back from server to client 
+                    send_payload = {
+                        "message": message,
+                        "create_time": datetime.utcnow().isoformat()
+                    }
+                    if(user):
+                        send_payload["username"] = user.username
+                    else:
+                        send_payload["username"] = "unknown"
+                    json_payload_to_send = json.dumps(send_payload)
+                    
+                    await websocket.send_text(json_payload_to_send)
 
-                # adding message to queue
-                queue_payload = {
-                    "message": message,
-                    "create_time": datetime.utcnow().isoformat(),
-                    "sender_id": sender_id,    
-                    "room_name": room_name
-                }
-                redis_client.xadd(STREAM, queue_payload)
-                # await queue.put(queue_payload)
+                    # adding message to queue
+                    queue_payload = {
+                        "message": message,
+                        "create_time": datetime.utcnow().isoformat(),
+                        "sender_id": sender_id,    
+                        "room_name": room_name
+                    }
+                    redis_client.xadd(STREAM, queue_payload)
 
     except WebSocketDisconnect:
             print("Client disconnected")

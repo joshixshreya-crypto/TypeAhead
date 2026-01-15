@@ -19,12 +19,15 @@ const ConversationComponent = () => {
     });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = (e) => {
     if (input.length > 0) {
-      
+      if(e.key == "Enter"){
       sendMessage(input, roomId, userId);
       setInput("");
       console.log("=====>messages", messages);
+      }
+      
+      
     } else {
       console.log("enter a message first");
       return;
@@ -126,11 +129,12 @@ const ConversationComponent = () => {
             placeholder="write a message..."
             onChange={(e) => setInput(e.target.value)}
             variant="filled"
+            onKeyDown={handleSendMessage}
             InputProps={{
               disableUnderline: true,
             }}
           ></TextField>
-          <Button onClick={handleSendMessage}>send</Button>
+          {/* <Button onClick={handleSendMessage}>send</Button> */}
         </Stack>
       </Box>
     </Stack>
