@@ -1,36 +1,19 @@
-import { useMemo, useState } from "react";
+import { Route, Routes } from "react-router-dom";
+import CreateRoom from "./components/create-room";
+import ChatComponent from "./components/chat-component";
 import "./App.css";
-import Autocomplete from "./components/autocomplete";
-import SuggestionList from "./components/suggestion-list";
-import debounce from "lodash.debounce";
+import Register from "./components/register";
 
 function App() {
-  const [inputVal, setInputVal] = useState("");
-
-  const handleDebounceInputVal = useMemo(
-    () => debounce((input) => setInputVal(input), 300),
-    []
-  );
-
-  const handleChange = (e) => {
-    handleDebounceInputVal(e.target.value);
-    // setInputVal(e.target.value)
-  };
-
-  const handleSelectSuggestion = (data) => {
-    setInputVal(data);
-  };
-
   return (
-    <>
-      <Autocomplete inputVal={inputVal} handleChange={handleChange} />
-      {inputVal.length > 0 && (
-        <SuggestionList
-          inputVal={inputVal}
-          handleSelectSuggestion={handleSelectSuggestion}
-        ></SuggestionList>
-      )}
-    </>
+    <Routes>
+      <Route path="/" element={<Register></Register>}></Route>
+      <Route path="/create-room/:userId" element={<CreateRoom></CreateRoom>}></Route>
+      <Route
+        path="/chat/:roomId"
+        element={<ChatComponent></ChatComponent>}
+      ></Route>
+    </Routes>
   );
 }
 
