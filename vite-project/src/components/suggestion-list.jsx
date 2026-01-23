@@ -1,30 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import { startsWithInTrie } from "../restApi";
+import { getFriendsList, startsWithInTrie } from "../restApi";
 import debounce from "lodash.debounce";
 
-const SuggestionList = ({ inputVal, handleSelectSuggestion }) => {
+const SuggestionList = ({ inputVal, handleSelectSuggestion, type = "room" }) => {
+  console.log("propsss", inputVal, type)
   const [suggList, setSuggList] = useState([]);
   const suggestionListApiDebounce = useMemo(() => {
     return debounce((val) => {
-      startsWithInTrie(val)
+
+      const apiCall = type === 'friend' ? getFriendsList(val) : startsWithInTrie(val)
+      apiCall
         .then((res) => {
+          console.log("suggestion list res", res)
           setSuggList(res.data.response);
         })
         .catch((e) => {
           console.log(e);
         });
     }, 500);
-  }, []);
+
+  }, []); 
 
   useEffect(() => {
     suggestionListApiDebounce(inputVal);
-    console.log("=====>",suggList)
-  }, [inputVal]);
+  }, [inputVal , type]);
 
   return (
     <div style={{ width: "21.22em" }}>
-      {suggList.map((data) => (
+      {suggList.map((data) => {
+        const username = typeof data === 'string'? data : data.children
+        const user_id = typeof data === 'string'? data : data.user_id
+        return(
         <li
+          key = {user_id}
           style={{
             listStyle: "none",
             cursor: "pointer",
@@ -39,9 +47,10 @@ const SuggestionList = ({ inputVal, handleSelectSuggestion }) => {
           }}
           onClick={() => handleSelectSuggestion(data)}
         >
-          {data}
+          {username}
         </li>
-      ))}
+        )
+      })}
     </div>
   );
 };

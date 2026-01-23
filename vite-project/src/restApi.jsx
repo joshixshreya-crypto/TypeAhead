@@ -28,3 +28,25 @@ export const fetchMessageByRoomName = (room_name) =>{
 export const addUser = (userPayload) =>{
     return apiClient.post('/user-creds' , userPayload)
 }
+
+// login user
+export const loginUser = (loginPayload) =>{
+    return apiClient.post('/login' , loginPayload)
+}
+// search friends and add them as friends
+export const getFriendsList = (prefix) =>{
+    console.log("getting friends list for prefix:", prefix)
+    return apiClient.get(`/starts-with-users/${prefix}`)
+}
+
+// send request to add friend
+
+export const sendFriendRequest = (initiator_id , reciever_id)=>{
+    return apiClient.post(`/send-friend_request` , {initiator_id: initiator_id , reciever_id: reciever_id})
+}
+
+//fetch notifications
+export const fetchNotifications = (user_id) =>{
+    return apiClient.get(`/fetch-notifications/${user_id}`)
+
+}

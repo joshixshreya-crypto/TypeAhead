@@ -1,7 +1,7 @@
 import asyncio
 import time
 from dotenv import load_dotenv
-from redis_stream import create_consumer_group
+from redis_stream import create_consumer_group , create_notification_consumer_group
 from message_worker import message_worker
 from redis_client import redis_client
 
@@ -27,6 +27,8 @@ async def start_worker():
     # Create consumer group
     try:
         create_consumer_group()
+        create_notification_consumer_group()
+
     except Exception as e:
         print(f"Failed to create consumer group: {e}")
         import traceback
