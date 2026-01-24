@@ -1,13 +1,15 @@
-import redis_client from redis_client
+from redis_client import redis_client
 from redis_stream import create_notification_consumer_group
 import os
 from dotenv import load_dotenv
-from connection_model import NotificationModel
+from models.connection_model import NotificationModel
 load_dotenv()
 import asyncio
+import uuid
+from database import SessionLocal
 
 async def notification_worker():
-    print("🔔 Starting notification worker...")
+    print("Starting notification worker...")
     notification_stream = os.getenv("NOTIFICATION_STREAM_NAME")
     notification_consumer = os.getenv("NOTIFICATION_CONSUMER_GROUP_NAME")
 
@@ -32,7 +34,9 @@ async def notification_worker():
                         "user_id" : message_data.get('user_id'),
                         "initiator_id" : message_data.get('initiator_id'),
                         "request_id" : message_data.get('request_id'),
-                        "notification_type" : "FRIEND_REQUEST"
+                        "initiator_username": message_data.get('initiator_username'),
+                        "notification_type" : "FRIEND_REQUEST",
+                        "created_at" : message_data.get('created_at')
                     }
                     
                     #inserting it in notification db

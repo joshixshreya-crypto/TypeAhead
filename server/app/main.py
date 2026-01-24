@@ -22,6 +22,7 @@ from start_worker import start_worker
 from rate_limiter import rate_limiter
 from sliding_win_rate_limiter import sliding_window_rate_limiter
 from token_bucket_rate_limiter import token_bucket_rl
+from service.notification_service import notification_worker
 
 
 
@@ -72,6 +73,8 @@ async def load_trie_from_db(app: FastAPI ):
     
     # Start worker in background task (non-blocking)
     asyncio.create_task(start_worker())
+    # Start notification worker
+    asyncio.create_task(notification_worker())
     print("Application startup complete - worker running in background")
     
     yield
@@ -211,17 +214,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = json_data['message']
                 sender_id  = json_data['userId']
                 room_name = json_data['room_name']
-                # rate limiter added so that no spam messages 
-                # if(rate_limiter(sender_id) == False):
-                #     await websocket.send_text(json.dumps({
-                #         "error": "too many messages !! slow down "
-                #     }))
-                #     continue
-                # if(sliding_window_rate_limiter(sender_id) == False):
-                #     await websocket.send_text(json.dumps({
-                #         "error": "too many messages dude slow downnn!"
-                #     }))
-                #     continue
+
+                # rate limiting check
                 if(token_bucket_rl(sender_id) == False):
                     await websocket.send_text(json.dumps({
                         "error": "too many messages dude slow downnn!"
@@ -269,6 +263,7 @@ def get_users_list_suggestion(prefix: str):
 #request friend api 
 @app.post("/send-friend_request")
 def add_friend_api(connection: ConnectionModel , db: Session = Depends(get_db)):
+    created_at = datetime.utcnow().isoformat()
     notification_stream = os.getenv("NOTIFICATION_STREAM_NAME")
     connection_id = str(uuid.uuid4())
     sql_query = "INSERT INTO connection (id , initiator_id , reciever_id , status , created_at) VALUES (:id , :initiator_id , :reciever_id , :status , :created_at)"
@@ -277,17 +272,25 @@ def add_friend_api(connection: ConnectionModel , db: Session = Depends(get_db)):
         "initiator_id": connection.initiator_id,
         "reciever_id": connection.reciever_id,
         "status": ConnectionStatusEnum.PENDING.value,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": created_at
     })
     db.commit()
 
+    sql_query = "SELECT u.username from users as u where u.id = :initiator_id"
+    response = db.execute(text(sql_query),{
+        "initiator_id": connection.initiator_id
+    })
+    response = response.mappings().first()
+    print("userrrrrnamee" , response)
     # send notificaion to notication stream
     notificaionStreamPalyoad = {
         "user_id": connection.reciever_id,
         "initiator_id": connection.initiator_id,
+        "initiator_username": response['username'],
         "type": "FRIEND_REQUEST",
         "request_id": connection_id,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": created_at
+        
 
     }
     redis_client.xadd(notification_stream , notificaionStreamPalyoad)

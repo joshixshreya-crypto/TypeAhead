@@ -21,5 +21,6 @@ class NotificationModel(Base):
     initiator_id = Column(String , ForeignKey("users.id"))
     request_id = Column(String , ForeignKey("connection.id"))
     notification_type = Column(String)
+    initiator_username=Column(String)
     created_at = Column(String)
 

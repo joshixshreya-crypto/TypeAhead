@@ -45,14 +45,14 @@ const Login = () => {
             name="username"
             onChange={handleFormChange}
             value={userData.username}
-            sx={{ color: "white", borderBottom: "2px solid white" }}
+            sx={{  borderBottom: "2px solid white" }}
             placeholder="enter username..."
           ></Input>
           <Input
             name="password"
             onChange={handleFormChange}
             value={userData.password}
-            sx={{ color: "white", borderBottom: "2px solid white" }}
+            sx={{  borderBottom: "2px solid white" }}
             placeholder="enter password..."
           ></Input>
           <Button type="submit" variant="primary">
