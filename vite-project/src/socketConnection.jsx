@@ -3,21 +3,29 @@ import { useEffect, useRef, useState } from "react";
 const useSocketConnection = () => {
   const chatSocket = useRef(null);
   const [messages, setMessages] = useState([]);
+  
+  const userId = sessionStorage.getItem("user_id");
   useEffect(() => {
     chatSocket.current = new WebSocket("ws://localhost:8000/ws");
 
     chatSocket.current.onopen = () => {
+      chatSocket.current.send(
+        JSON.stringify({
+          type: "INIT",
+          userId: userId   
+        })
+      );
       console.log("connected to server");
     };
 
     chatSocket.current.onmessage = (event) => {
-      
+
       const parsedData = JSON.parse(event.data)
-      if(parsedData.error){
-         console.warn(parsedData.error)
-         return
+      if (parsedData.error) {
+        console.warn(parsedData.error)
+        return
       }
-      console.log("=======>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",parsedData)
+      console.log("=======>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", parsedData)
       setMessages((prev) => [...prev, parsedData]);
     };
 
@@ -28,8 +36,8 @@ const useSocketConnection = () => {
     return () => chatSocket.current.close();
   }, []);
 
-  const sendMessage = (text, roomId , userId) => {
-    console.log("userId" , userId)
+  const sendMessage = (text, roomId) => {
+    console.log("userId", userId)
     if (chatSocket.current?.readyState === WebSocket.OPEN) {
       const payload = {
         room_name: roomId,
@@ -41,7 +49,7 @@ const useSocketConnection = () => {
     }
   };
 
-  return { messages, setMessages , sendMessage };
+  return { messages, setMessages, sendMessage };
 };
 
 export default useSocketConnection;

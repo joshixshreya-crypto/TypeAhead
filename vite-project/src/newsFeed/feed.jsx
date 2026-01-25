@@ -12,10 +12,12 @@ import ListItemText from '@mui/material/ListItemText';
 import { notificationEnum } from '../constants/notification';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import useSocketConnection from '../socketConnection';
 
 
 const Feed = () => {
   const { userId } = useParams();
+  const {} =  useSocketConnection()
   const [notificationsList, setNotificationsList] = useState([]);
   useEffect(() => {
     if (!userId) return;

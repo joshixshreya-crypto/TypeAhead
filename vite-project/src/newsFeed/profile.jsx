@@ -10,7 +10,7 @@ const Profile = () => {
 
     const handleAddFriendHandler = () => {
         sendFriendRequest(userId , friendUserId).then((res)=>{
-            console.log("friend reques sent" , res.data.response)
+            console.log("friend request sent" , res.data.response)
         })
     }
 

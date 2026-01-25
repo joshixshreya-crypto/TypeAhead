@@ -24,14 +24,36 @@ from sliding_win_rate_limiter import sliding_window_rate_limiter
 from token_bucket_rate_limiter import token_bucket_rl
 from service.notification_service import notification_worker
 
-
-
 # Load environment variables
 load_dotenv()
 
 trie = Trie()
 user_trie = Trie()
 # queue = AsyncQueue()
+active_connections = {}
+
+
+async def pubsub_listener():
+    print("🟢 pubsub_listener started, subscribing now")
+    pubsub = redis_client.pubsub()
+    pubsub.subscribe("websocket_notifications")
+    print(" 🔥Started Redis Pub/Sub listener for notifications")
+    
+    while True:
+        message = await asyncio.to_thread(pubsub.get_message, ignore_subscribe_messages=True)
+        if not message:
+            await asyncio.sleep(0.1)
+            continue
+        try:               
+            print("Received notification message via Pub/Sub:", message)
+            notification_data = json.loads(message['data'])
+            user_id = notification_data['user_id']
+            notification_id = notification_data['request_id']
+            await send_notifications_to_user(user_id, notification_data)
+        except Exception as e:
+            print(f"error processing pubsub message: {e}")
+
+         
 
 @asynccontextmanager
 async def load_trie_from_db(app: FastAPI ):
@@ -64,7 +86,7 @@ async def load_trie_from_db(app: FastAPI ):
         for a in words:      
             trie.insert(a.room_name)
         for u in users:
-            user_trie.insert(u.username)
+            user_trie.insert(u.username , u.id)
         print(f"Loaded {len(words)} words and {len(users)} usersinto trie")
     except Exception as e:
         print(f"⚠️  Error loading trie: {e}")
@@ -75,6 +97,10 @@ async def load_trie_from_db(app: FastAPI ):
     asyncio.create_task(start_worker())
     # Start notification worker
     asyncio.create_task(notification_worker())
+
+    # Subscribe to pubsub for sending notifications
+    asyncio.create_task(pubsub_listener())
+    
     print("Application startup complete - worker running in background")
     
     yield
@@ -204,13 +230,20 @@ def fetch_chat_history(room_name: str , db: Session = Depends(get_db)):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    print("🔥 WebSocket endpoint hit")
     await websocket.accept()
     db = SessionLocal()
     try:
         while True:
             data = await websocket.receive_text()
-            if(data):
-                json_data = json.loads(data)
+            json_data = json.loads(data)
+            # initializing connection for sending notifications to client
+            if(json_data.get('type') == "INIT"):
+                user_id = json_data.get('userId')
+                print("initializing connection for notfication" , user_id)
+                active_connections[user_id] = websocket
+                continue
+            else:               
                 message = json_data['message']
                 sender_id  = json_data['userId']
                 room_name = json_data['room_name']
@@ -305,6 +338,20 @@ def fetch_notifications_api(user_id: str , db:Session = Depends(get_db)):
     })
     notifications = notifications.mappings().all()
     return {"response": notifications}
+
+async def send_notifications_to_user(user_id: str , notification_data: dict):
+    websocket = active_connections.get(user_id)
+    if websocket:
+        print(f"Sending notification to user {user_id} via WebSocket")
+        await websocket.send_text(json.dumps(notification_data))
+
+    else:
+        print(f"No active websocket connection for user {user_id}")
+
+
+
+
+
 
 
 

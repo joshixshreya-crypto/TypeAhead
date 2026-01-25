@@ -2,8 +2,10 @@ import { Button, Input, Stack } from "@mui/material";
 import { useState } from "react";
 import { addUser, loginUser } from "../restApi";
 import { useNavigate } from "react-router-dom";
+import useSocketConnection from "../socketConnection";
 
 const Login = () => {
+  
   const [userData, setUserData] = useState({
     username: "",
     password: "",
@@ -62,6 +64,6 @@ const Login = () => {
       </form>
     </div>
   );
-};
+}
 
 export default Login;

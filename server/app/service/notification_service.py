@@ -7,6 +7,7 @@ load_dotenv()
 import asyncio
 import uuid
 from database import SessionLocal
+import json
 
 async def notification_worker():
     print("Starting notification worker...")
@@ -43,6 +44,17 @@ async def notification_worker():
                     await asyncio.to_thread(save_notifications_to_db , notification_payload)
                     
                     redis_client.xack(notification_stream , notification_consumer , message_id)
+                    # publish to redis pubsub for notification
+
+                    redis_client.publish(
+                        "websocket_notifications",
+                        json.dumps({
+                            
+                            "notification_type": message_data.get("notification_type"),
+                            "user_id": message_data.get("user_id"),
+                            "request_id": message_data.get("request_id"),
+                        })
+                    )
                 except Exception as e:
                     print(f"error processing notification {e} with notification id : {message_id}")
                     continue
