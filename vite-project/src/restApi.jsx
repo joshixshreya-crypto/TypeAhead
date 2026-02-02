@@ -42,11 +42,20 @@ export const getFriendsList = (prefix) =>{
 // send request to add friend
 
 export const sendFriendRequest = (initiator_id , reciever_id)=>{
-    return apiClient.post(`/send-friend_request` , {initiator_id: initiator_id , reciever_id: reciever_id})
+    return apiClient.post(`/friend-request` , {initiator_id: initiator_id , reciever_id: reciever_id})
 }
 
 //fetch notifications
 export const fetchNotifications = (user_id) =>{
     return apiClient.get(`/fetch-notifications/${user_id}`)
 
+}
+
+//check status of friend request
+export const checkFriendRequestStatus = (user_id , reciever_id) =>{
+    return apiClient.get(`/friend-request-status/${user_id}/${reciever_id}`)
+}
+
+export const respondToFriendRequest = (payload) =>{
+    return apiClient.post(`/friend-request/accept` , payload)
 }

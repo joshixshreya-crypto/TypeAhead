@@ -1,7 +1,7 @@
 import { Box, IconButton, Stack, List } from '@mui/material'
 import { useEffect, useState } from 'react'
 import SearchFriends from './searchFriends';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { fetchNotifications } from '../restApi';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import Drawer from '@mui/material/Drawer';
@@ -9,24 +9,23 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import { notificationEnum } from '../constants/notification';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useSocketConnection from '../socketConnection';
-
+import { notificationEnum } from '../constants/notification';
 
 const Feed = () => {
   const { userId } = useParams();
-  const {} =  useSocketConnection()
+  const { messages} = useSocketConnection();
   const [notificationsList, setNotificationsList] = useState([]);
+  const navigate = useNavigate();
   useEffect(() => {
     if (!userId) return;
     fetchNotifications(userId).then((res) => {
-      console.log("notifications", res.data.response); 
-      const notifications = res.data.response.filter((notificationsData =>notificationsData.notification_type === notificationEnum.FRIEND_REQUEST)).map((notificationsData)=>{
-       
-         return  {message: `Friend request from ${notificationsData.initiator_username}` ,request_id: notificationsData.request_id}
-        
+      console.log("notifications", res.data.response);
+      const notifications = res.data.response.filter((notificationsData => notificationsData.notification_type === notificationEnum.FRIEND_REQUEST)).map((notificationsData) => {
+
+        return { ...notificationsData,message: `Friend request from ${notificationsData.initiator_username}` }
+
       })
       setNotificationsList(notifications)
     }).catch(e =>
@@ -34,10 +33,30 @@ const Feed = () => {
     )
   }, [userId])
 
+  useEffect(() => {
+    if(!messages || messages.length ===0) return;
+    console.log("heyyyy",messages)
+    const last = messages[messages.length - 1];
+    if(last.notification_type !== notificationEnum.FRIEND_REQUEST) return;  
+
+    setNotificationsList((prev)=>
+    [
+      ...prev,
+      {
+        ...last, 
+        message: `Friend request from ${last.initiator_username}`,
+      }
+
+    ])
+   
+  },[messages])
+
   // drawer state 
   const [state, setState] = useState({
     btn: false,
   });
+
+  const username = sessionStorage.getItem("username");
 
   const toggleDrawer =
     (anchor, open) => (event) => {
@@ -49,7 +68,12 @@ const Feed = () => {
       }
       setState({ ...state, [anchor]: open });
     };
-
+  function handleNotificationClick(initiatorData) {
+     sessionStorage.setItem("addFriendUserId", initiatorData.initiator_id);
+    sessionStorage.setItem("addFriendUsername", initiatorData.initiator_username);
+    navigate(`/profile/${initiatorData.initiator_username}`)
+  }
+  // notifications list 
   const list = (event) => {
     return (
       <Box
@@ -60,10 +84,10 @@ const Feed = () => {
       >
         <List>
           {notificationsList.map((notificationData, index) => (
-            <ListItem key={notificationData.request_id} disablePadding>
+            <ListItem onClick = {()=> handleNotificationClick(notificationData)} key={notificationData.request_id} disablePadding>
               <ListItemButton>
                 <ListItemIcon>
-                  <PersonAddIcon/>
+                  <PersonAddIcon />
                 </ListItemIcon>
                 <ListItemText primary={notificationData.message} />
               </ListItemButton>
@@ -76,7 +100,7 @@ const Feed = () => {
 
   return (
     <Stack>
-
+      <h2>{username}</h2>
       <SearchFriends></SearchFriends>
       <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
         <div>

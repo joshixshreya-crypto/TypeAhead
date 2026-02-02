@@ -1,8 +1,8 @@
 import { Button, Input, Stack } from "@mui/material";
-import { useState } from "react";
-import { addUser, loginUser } from "../restApi";
+import { useEffect, useState } from "react";
+import { loginUser } from "../restApi";
 import { useNavigate } from "react-router-dom";
-import useSocketConnection from "../socketConnection";
+
 
 const Login = () => {
   
@@ -24,8 +24,10 @@ const Login = () => {
     e.preventDefault();
     loginUser(userData)
       .then((res) => {
-        const user_id = res.data.response.id
+        const user_id = res.data.response.id;
+        const username = res.data.response.username;
         sessionStorage.setItem("user_id", user_id)
+        sessionStorage.setItem("username", username)
         navigate(`/feed/${user_id}`)
         console.log("====>", res);
       })

@@ -23,6 +23,7 @@ from rate_limiter import rate_limiter
 from sliding_win_rate_limiter import sliding_window_rate_limiter
 from token_bucket_rate_limiter import token_bucket_rl
 from service.notification_service import notification_worker
+from sqlalchemy.exc import IntegrityError
 
 # Load environment variables
 load_dotenv()
@@ -53,7 +54,6 @@ async def pubsub_listener():
         except Exception as e:
             print(f"error processing pubsub message: {e}")
 
-         
 
 @asynccontextmanager
 async def load_trie_from_db(app: FastAPI ):
@@ -139,6 +139,9 @@ class LoginPayload(BaseModel):
 class ConnectionModel(BaseModel):
     initiator_id: str
     reciever_id: str
+class AcceptRequestPayload(BaseModel):
+    user_id: str
+    initiator_id: str
 
 @app.post("/insert-trie")
 def insert_words(payload:SearchPayload , db: Session = Depends(get_db)):  
@@ -294,40 +297,107 @@ def get_users_list_suggestion(prefix: str):
     return {"response":result}
 
 #request friend api 
-@app.post("/send-friend_request")
-def add_friend_api(connection: ConnectionModel , db: Session = Depends(get_db)):
-    created_at = datetime.utcnow().isoformat()
-    notification_stream = os.getenv("NOTIFICATION_STREAM_NAME")
-    connection_id = str(uuid.uuid4())
-    sql_query = "INSERT INTO connection (id , initiator_id , reciever_id , status , created_at) VALUES (:id , :initiator_id , :reciever_id , :status , :created_at)"
-    db.execute(text(sql_query),{
-        "id": connection_id,
-        "initiator_id": connection.initiator_id,
-        "reciever_id": connection.reciever_id,
-        "status": ConnectionStatusEnum.PENDING.value,
-        "created_at": created_at
-    })
-    db.commit()
+# @app.post("/friend-request")
+# def add_friend_api(connection: ConnectionModel , db: Session = Depends(get_db)):
+    # try: 
+    #     created_at = datetime.utcnow().isoformat()
+    #     notification_stream = os.getenv("NOTIFICATION_STREAM_NAME")
+    #     connection_id = str(uuid.uuid4())
+    #     sql_query = sql_query = """
+    #             INSERT INTO connection (id, initiator_id, reciever_id, status, created_at)
+    #             VALUES (:id, :initiator_id, :reciever_id, :status, :created_at)
+    #             ON CONFLICT (initiator_id, reciever_id)
+    #             DO NOTHING
+    #             RETURNING id
+    #             """
+    #     result = db.execute(text(sql_query),{
+    #         "id": connection_id,
+    #         "initiator_id": connection.initiator_id,
+    #         "reciever_id": connection.reciever_id,
+    #         "status": ConnectionStatusEnum.PENDING.value,
+    #         "created_at": created_at
+    #     }).fetchone()
+    #     db.commit()
+    #     # request already exists 
+    #     if(result is None):
+    #         print("⚠️ request already exists")
+    #         sql_query = "SELECT id ,status from connection as c where c.initiator_id = :initiator_id and c.reciever_id = :reciever_id"
+    #         existing_connection = db.execute(text(sql_query), {
+    #             'initiator_id': connection.initiator_id,
+    #             'reciever_id': connection.reciever_id   
+    #         })
+    #         existing_connection = existing_connection.mappings().first()
+    #         request_id = existing_connection['id']
+    #         status = existing_connection['status']  
 
-    sql_query = "SELECT u.username from users as u where u.id = :initiator_id"
-    response = db.execute(text(sql_query),{
-        "initiator_id": connection.initiator_id
-    })
-    response = response.mappings().first()
-    print("userrrrrnamee" , response)
-    # send notificaion to notication stream
-    notificaionStreamPalyoad = {
-        "user_id": connection.reciever_id,
-        "initiator_id": connection.initiator_id,
-        "initiator_username": response['username'],
-        "type": "FRIEND_REQUEST",
-        "request_id": connection_id,
-        "created_at": created_at
+           
+    #         print("existing connection id" , request_id)
+    #         return {"message": "Friend request already exists" ,"response": {"req_id":request_id ,  "status": status }}
         
+    #     # request doesnot exists , created just now and send notification.
+    #     else:
+    #         sql_query = "SELECT u.username from users as u where u.id = :initiator_id"
+    #         response = db.execute(text(sql_query),{
+    #             "initiator_id": connection.initiator_id
+    #         })
+    #         response = response.mappings().first()
+    #         print("userrrrrnamee" , response)
+    #         # send notificaion to notication stream
+    #         notificaionStreamPalyoad = {
+    #             "user_id": connection.reciever_id,
+    #             "initiator_id": connection.initiator_id,
+    #             "initiator_username": response['username'],
+    #             "notification_type": "FRIEND_REQUEST",
+    #             "request_id": connection_id,
+    #             "created_at": created_at           
+    #         }
+    #         redis_client.xadd(notification_stream , notificaionStreamPalyoad)
+    #         return {"message": "Friend request sent successfully"}
+    # except Exception as e:
+    #     print(f"error in friend request api: {e}")
+    #     raise HTTPException(500 , "internal server error , {e}")
 
-    }
-    redis_client.xadd(notification_stream , notificaionStreamPalyoad)
-    return {"message": "Friend request sent successfully"}
+@app.post("/friend-request")
+def add_friend_api(connection: ConnectionModel , db: Session = Depends(get_db)):
+    try: 
+        created_at = datetime.utcnow().isoformat()
+        notification_stream = os.getenv("NOTIFICATION_STREAM_NAME")
+        connection_id = str(uuid.uuid4())
+        sql_query = sql_query = """
+                INSERT INTO connection (id, initiator_id, reciever_id, status, created_at)
+                VALUES (:id, :initiator_id, :reciever_id, :status, :created_at)
+                """
+        result = db.execute(text(sql_query),{
+            "id": connection_id,
+            "initiator_id": connection.initiator_id,
+            "reciever_id": connection.reciever_id,
+            "status": ConnectionStatusEnum.PENDING.value,
+            "created_at": created_at
+        })
+        db.commit()
+        # request doesnot exists , created just now and send notification.
+        sql_query = "SELECT u.username from users as u where u.id = :initiator_id"
+        response = db.execute(text(sql_query),{
+            "initiator_id": connection.initiator_id
+        })
+        response = response.mappings().first()
+        print("userrrrrnamee" , response)
+        # send notificaion to notication stream
+        notificaionStreamPalyoad = {
+            "user_id": connection.reciever_id,
+            "initiator_id": connection.initiator_id,
+            "initiator_username": response['username'],
+            "notification_type": "FRIEND_REQUEST",
+            "request_id": connection_id,
+            "created_at": created_at           
+        }
+        redis_client.xadd(notification_stream , notificaionStreamPalyoad)
+        return {"message": "Friend request sent successfully"}
+    except IntegrityError:
+        print("⚠️ request already exists")
+    except Exception as e:
+        print(f"error in friend request api: {e}")
+        raise HTTPException(500 , "internal server error , {e}")
 
 # fetch notifications api
 @app.get("/fetch-notifications/{user_id}")
@@ -347,6 +417,76 @@ async def send_notifications_to_user(user_id: str , notification_data: dict):
 
     else:
         print(f"No active websocket connection for user {user_id}")
+
+@app.post("/friend-request/accept")
+def accept_friend_request(payload: AcceptRequestPayload , db: Session = Depends(get_db)):
+    NOTIFICATION_STREAM_NAME = os.getenv("NOTIFICATION_STREAM_NAME")
+    try:
+        sql_query = """ SELECT c.status from connection as c where c.reciever_id = :user_id and c.initiator_id = :initiator_id """
+        response = db.execute(text(sql_query), {
+            "user_id": payload.user_id,
+            "initiator_id": payload.initiator_id
+        }).mappings().first()
+        
+        if(response is None):
+            raise HTTPException(404 , "friend request not found")
+        status = response['status']
+        if(status == ConnectionStatusEnum.ACCEPTED.value):
+            return {"message": f"friend request already {status.lower()}"}
+        sql_query = """ UPDATE connection set status = :status where reciever_id = :user_id and initiator_id = :initiator_id"""
+        db.execute(text(sql_query), {
+            "status": ConnectionStatusEnum.ACCEPTED.value,
+            "user_id": payload.user_id,
+            "initiator_id": payload.initiator_id
+        })
+        db.commit()
+        sql_query = "SELECT u.username from users as u where u.id = :user_id"
+        response = db.execute(text(sql_query),{
+            "user_id": payload.user_id
+        })
+        response = response.mappings().first()
+        notification_payload = {
+            "user_id": payload.initiator_id,
+            "initiator_id": payload.user_id,
+            "notification_type": "FRIEND_REQUEST_ACCEPTED",
+            "request_id": str(uuid.uuid4()),
+            "initiator_username": response['username'],
+            "created_at": datetime.utcnow().isoformat()          
+        }
+        redis_client.xadd(NOTIFICATION_STREAM_NAME ,notification_payload)
+        return {"message": "friend request accepted successfully"}
+    except Exception as e:
+        print(f"error in accept friend request api: {e}")
+        raise HTTPException(500 , "internal server error , {e}")
+
+@app.get("/friend-request-status/{user_id}/{reciever_id}")
+def check_friend_request_status(user_id: str , reciever_id: str , db: Session = Depends(get_db)):
+    try:
+        sql_query = """ SELECT status, initiator_id, reciever_id 
+            FROM connection 
+            WHERE (initiator_id = :user_id AND reciever_id = :reciever_id)
+            OR (initiator_id = :reciever_id AND reciever_id = :user_id) """
+        response = db.execute(text(sql_query), {
+            "user_id": user_id,
+            "reciever_id": reciever_id
+        })
+        response = response.mappings().first()
+        
+        if not response:
+            return {"status": "NONE"}
+        status = response['status']
+        if(status == ConnectionStatusEnum.ACCEPTED.value):
+            return {"status": "ACCEPTED"}
+        if(response['initiator_id'] == user_id):
+            return {"status": "SENT"}
+        else:
+            return {"status": "RECEIVED"}
+    except Exception as e:
+        print(f"error in checking friend request status api: {e}")
+        raise HTTPException(500 , "internal server error , {e}")
+        
+
+        
 
 
 

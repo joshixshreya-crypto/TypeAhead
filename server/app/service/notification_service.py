@@ -8,6 +8,7 @@ import asyncio
 import uuid
 from database import SessionLocal
 import json
+from sqlalchemy.exc import IntegrityError
 
 async def notification_worker():
     print("Starting notification worker...")
@@ -36,25 +37,25 @@ async def notification_worker():
                         "initiator_id" : message_data.get('initiator_id'),
                         "request_id" : message_data.get('request_id'),
                         "initiator_username": message_data.get('initiator_username'),
-                        "notification_type" : "FRIEND_REQUEST",
+                        "notification_type" : message_data.get('notification_type'),
                         "created_at" : message_data.get('created_at')
                     }
                     
                     #inserting it in notification db
-                    await asyncio.to_thread(save_notifications_to_db , notification_payload)
-                    
+                    inserted = await asyncio.to_thread(save_notifications_to_db , notification_payload)
+                    if inserted:
+                        
+                        # publish to redis pubsub for notification
+                        redis_client.publish(
+                            "websocket_notifications",
+                            json.dumps({                            
+                                "notification_type": message_data.get("notification_type"),
+                                "user_id": message_data.get("user_id"),
+                                "request_id": message_data.get("request_id"),
+                                "initiator_username": message_data.get("initiator_username"),
+                            })
+                        )
                     redis_client.xack(notification_stream , notification_consumer , message_id)
-                    # publish to redis pubsub for notification
-
-                    redis_client.publish(
-                        "websocket_notifications",
-                        json.dumps({
-                            
-                            "notification_type": message_data.get("notification_type"),
-                            "user_id": message_data.get("user_id"),
-                            "request_id": message_data.get("request_id"),
-                        })
-                    )
                 except Exception as e:
                     print(f"error processing notification {e} with notification id : {message_id}")
                     continue
@@ -62,16 +63,23 @@ async def notification_worker():
 
 def save_notifications_to_db(notification_payload):
     db = SessionLocal()
+    inserted = False
     try: 
         notification = NotificationModel(
         **notification_payload
         )
         db.add(notification)
         db.commit()
+        inserted = True
+    except IntegrityError: 
+        db.rollback()
+        print("Duplicate notification detected. Skipping insertion.")
     except Exception as e:
         db.rollback()
         raise
+    
     finally:
         db.close()
     print(f"Notification created for user {notification_payload.get('user_id')}")
+    return inserted
 
