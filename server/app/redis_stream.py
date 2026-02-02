@@ -32,3 +32,23 @@ def create_consumer_group():
         else:
             print(f"Error creating consumer group: {e}")
             raise 
+
+def create_notification_consumer_group():
+    notification_stream= os.getenv("NOTIFICATION_STREAM_NAME")
+    notification_consumer = os.getenv("NOTIFICATION_CONSUMER_GROUP_NAME")
+
+    print("Creating notification group , stream name -" , notification_stream)
+    if(not notification_stream or not notification_consumer):
+        raise RuntimeError("notification stream name or group name is not assigned")
+    try:
+        redis_client.xgroup_create(
+            name = notification_stream,
+            groupname=notification_consumer,
+            id="0",
+            mkstream=True
+        )
+    except redis.ResponseError as e:
+        if "BUSYGROUP" in str(e):
+                print(f"{notification_consumer} already exists for stream {notification_stream}")
+        else:
+                raise RuntimeError(f"Error creating notification consumer group:{notification_consumer}") 

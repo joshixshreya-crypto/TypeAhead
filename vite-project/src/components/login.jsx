@@ -1,11 +1,12 @@
 import { Button, Input, Stack } from "@mui/material";
-import { useState } from "react";
-import { addUser } from "../restApi";
+import { useEffect, useState } from "react";
+import { loginUser } from "../restApi";
 import { useNavigate } from "react-router-dom";
 
-const Register = () => {
+
+const Login = () => {
+  
   const [userData, setUserData] = useState({
-    email: "",
     username: "",
     password: "",
   });
@@ -21,9 +22,13 @@ const Register = () => {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    addUser(userData)
+    loginUser(userData)
       .then((res) => {
-        navigate(`/login`)
+        const user_id = res.data.response.id;
+        const username = res.data.response.username;
+        sessionStorage.setItem("user_id", user_id)
+        sessionStorage.setItem("username", username)
+        navigate(`/feed/${user_id}`)
         console.log("====>", res);
       })
       .catch((err) => {
@@ -37,37 +42,30 @@ const Register = () => {
 
   return (
     <div style={{ width: "30vw" }}>
-      <h1>SIGN UP </h1>
+      <h1>LOG IN </h1>
       <form onSubmit={handleFormSubmit}>
         <Stack sx={{ justifyContent: "center" }}>
-          <Input
-            onChange={handleFormChange}
-            name="email"
-            value={userData.email}
-            sx={{  borderBottom: "2px solid white" }}
-            placeholder="enter email..."
-          ></Input>
           <Input
             name="username"
             onChange={handleFormChange}
             value={userData.username}
-            sx={{ borderBottom: "2px solid white" }}
+            sx={{  borderBottom: "2px solid white" }}
             placeholder="enter username..."
           ></Input>
           <Input
             name="password"
             onChange={handleFormChange}
             value={userData.password}
-            sx={{ borderBottom: "2px solid white" }}
+            sx={{  borderBottom: "2px solid white" }}
             placeholder="enter password..."
           ></Input>
           <Button type="submit" variant="primary">
-            Submit
+            Log In
           </Button>
         </Stack>
       </form>
     </div>
   );
-};
+}
 
-export default Register;
+export default Login;
